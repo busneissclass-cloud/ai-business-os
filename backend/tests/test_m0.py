@@ -2,6 +2,7 @@
 Run: DATABASE_URL=sqlite:///./test.db pytest -q"""
 import os
 
+os.environ.setdefault("API_KEY", "test-key")
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test_m0.db")
 
 from fastapi.testclient import TestClient  # noqa: E402
@@ -11,6 +12,7 @@ from app.main import app  # noqa: E402
 
 init_db()  # ensure tables exist even when lifespan isn't triggered
 client = TestClient(app)
+client.headers["X-API-Key"] = "test-key"
 
 
 def test_health_ok():
@@ -86,3 +88,12 @@ def test_audit_log_is_read_only():
 def test_correlation_id_propagates():
     r = client.get("/v1/health", headers={"X-Correlation-ID": "test-123"})
     assert r.headers["X-Correlation-ID"] == "test-123"
+
+
+def test_api_key_gate():
+    from fastapi.testclient import TestClient as TC
+    anon = TC(app)  # no API key header
+    assert anon.get("/v1/health").status_code == 200  # health stays open
+    assert anon.get("/v1/agents").status_code == 401  # protected: denied
+    assert anon.get("/v1/agents", headers={"X-API-Key": "wrong"}).status_code == 401
+    assert anon.get("/v1/agents", headers={"X-API-Key": "test-key"}).status_code == 200

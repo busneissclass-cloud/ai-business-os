@@ -3,6 +3,7 @@ buying intent, freshness, contact verification, NBA, brain brief.
 Run: DATABASE_URL=sqlite:///./test.db pytest -q"""
 import os
 
+os.environ.setdefault("API_KEY", "test-key")
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test_m05.db")
 
 from fastapi.testclient import TestClient  # noqa: E402
@@ -12,6 +13,7 @@ from app.main import app  # noqa: E402
 
 init_db()
 client = TestClient(app)
+client.headers["X-API-Key"] = "test-key"
 client.post("/v1/permissions/seed")
 
 

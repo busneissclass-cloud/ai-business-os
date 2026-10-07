@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from .auth import ApiKeyMiddleware, assert_production_ready
 from .db import SessionLocal, init_db
 from .middleware import AuditMiddleware, CorrelationIdMiddleware
 from .permissions import seed_permissions
@@ -14,6 +15,7 @@ from .agents.registry import seed_all
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    assert_production_ready()
     init_db()
     with SessionLocal() as db:
         seed_all(db)
@@ -23,6 +25,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="AI Business OS", version="0.1.0-m0", lifespan=lifespan)
 
 app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(ApiKeyMiddleware)
 app.add_middleware(AuditMiddleware)
 
 

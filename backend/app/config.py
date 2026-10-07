@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./aibos.db"
     REDIS_URL: str = "redis://localhost:6379/0"
     API_SECRET: str = "dev-only-secret-change-me"
+    API_KEY: str = ""  # required in production; X-API-Key header
     ENV: str = "development"
     KILL_SWITCH_KEY: str = "aibos:kill_switch"
 

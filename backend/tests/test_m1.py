@@ -4,6 +4,7 @@ import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+os.environ.setdefault("API_KEY", "test-key")
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test_m1.db")
 
 from fastapi.testclient import TestClient  # noqa: E402
@@ -14,6 +15,7 @@ from app.models import OptOut, Setting  # noqa: E402
 
 init_db()
 client = TestClient(app)
+client.headers["X-API-Key"] = "test-key"
 client.post("/v1/agents/seed")
 
 

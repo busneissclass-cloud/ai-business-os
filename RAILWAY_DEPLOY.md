@@ -12,6 +12,7 @@
    Railway khud `DATABASE_URL` aur `REDIS_URL` bana ke web service mein daal dega.
 6. Web service ke **Variables** mein add karein:
    - `API_SECRET` = koi lambi random string (openssl rand -hex 32)
+   - `API_KEY` = koi lambi random string (yeh aapki API ki key hai — har request mein `X-API-Key` header mein jayegi)
    - `ENV` = production
 7. **Deploy** — 2-3 minute mein `https://aibos-....up.railway.app` live.
 

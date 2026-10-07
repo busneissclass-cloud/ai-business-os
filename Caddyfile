@@ -1,0 +1,4 @@
+# Replace example.com with your domain. Caddy gets HTTPS automatically.
+{$DOMAIN:example.com} {
+	reverse_proxy api:8000
+}

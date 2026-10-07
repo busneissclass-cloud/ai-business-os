@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Business OS — Dashboard</title>
+<style>
+:root{--bg:#10181d;--panel:#182430;--panel2:#1f2e3d;--line:#2a3d4f;--txt:#e8eef3;--dim:#93a7b8;--teal:#2fa39a;--gold:#c9a227;--red:#e05c5c;--green:#43b581}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;padding:0 0 60px}
+header{position:sticky;top:0;z-index:10;background:#0c1217;border-bottom:1px solid var(--line);padding:12px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+header h1{font-size:18px;letter-spacing:.5px}
+header h1 span{color:var(--teal)}
+.keybar{display:flex;gap:8px;align-items:center;margin-left:auto}
+input,select,textarea{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:9px 12px;font-size:14px}
+input:focus{outline:none;border-color:var(--teal)}
+button{background:var(--teal);color:#062a28;border:none;border-radius:8px;padding:9px 16px;font-size:14px;font-weight:700;cursor:pointer}
+button:hover{filter:brightness(1.1)}
+button.ghost{background:transparent;color:var(--txt);border:1px solid var(--line)}
+button.danger{background:var(--red);color:#fff}
+button.small{padding:6px 12px;font-size:13px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px}
+.dot.ok{background:var(--green)}.dot.bad{background:var(--red)}.dot.warn{background:var(--gold)}
+main{max-width:1100px;margin:0 auto;padding:20px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card .v{font-size:26px;font-weight:800;margin-top:4px}
+.card .l{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px}
+.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.tabs button{background:var(--panel);color:var(--dim);border:1px solid var(--line)}
+.tabs button.active{background:var(--teal);color:#062a28;border-color:var(--teal)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700}
+.pill.HOT{background:#e05c5c;color:#fff}.pill.HIGH{background:#e08a3c;color:#fff}
+.pill.MEDIUM{background:#c9a227;color:#1a1a1a}.pill.LOW{background:#5a7a8a;color:#fff}
+.pill.PENDING{background:#c9a227;color:#1a1a1a}.pill.APPROVED,.pill.drafted{background:#2f7f9a;color:#fff}
+.pill.NEW_LEAD{background:#5a7a8a;color:#fff}.pill.VERIFIED{background:var(--green);color:#062a28}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+pre{white-space:pre-wrap;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:13px;max-height:300px;overflow:auto}
+.msg{padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:14px;display:none}
+.msg.err{display:block;background:#3a1d1d;border:1px solid var(--red)}
+.msg.okm{display:block;background:#14332c;border:1px solid var(--green)}
+.draft{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--panel2)}
+.draft h4{margin-bottom:6px}
+.draft p{font-size:13px;color:var(--dim)}
+.hidden{display:none}
+label{font-size:13px;color:var(--dim);display:block;margin-bottom:4px}
+.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Business <span>OS</span></h1>
+  <span id="conn"><span class="dot warn"></span><small>not connected</small></span>
+  <div class="keybar">
+    <input id="key" type="password" placeholder="Paste API key" style="width:260px">
+    <button class="small" onclick="saveKey()">Connect</button>
+    <button class="small ghost" id="killbtn" onclick="toggleKill()">Kill switch</button>
+  </div>
+</header>
+<main>
+  <div id="msg" class="msg"></div>
+  <div class="cards" id="cards"></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="panel" id="content">Connect with your API key to begin.</div>
+</main>
+<script>
+const BASE = location.origin;
+let KEY = localStorage.getItem('aibos_key') || '';
+document.getElementById('key').value = KEY;
+
+function saveKey(){ KEY = document.getElementById('key').value.trim(); localStorage.setItem('aibos_key', KEY); boot(); }
+function showMsg(t, ok){ const m=document.getElementById('msg'); m.className='msg '+(ok?'okm':'err'); m.textContent=t; }
+function hideMsg(){ document.getElementById('msg').className='msg'; }
+
+async function api(path, opts={}){
+  const r = await fetch(BASE+'/v1'+path, {headers:{'X-API-Key':KEY,'Content-Type':'application/json'}, ...opts});
+  if(r.status===401) throw new Error('Wrong API key (401)');
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function boot(){
+  hideMsg();
+  if(!KEY){ showMsg('Paste your API key above and press Connect.'); return; }
+  try{
+    const h = await api('/health');
+    document.getElementById('conn').innerHTML = '<span class="dot ok"></span><small>connected</small>';
+    const [agents, leads, approvals, drafts] = await Promise.all([
+      api('/agents'), api('/leads?limit=200'), api('/approvals?status=PENDING&limit=200'), api('/drafts?limit=200')
+    ]);
+    document.getElementById('cards').innerHTML = `
+      <div class="card"><div class="l">API</div><div class="v"><span class="dot ok"></span>Live</div></div>
+      <div class="card"><div class="l">Database</div><div class="v">${esc(h.db)}</div></div>
+      <div class="card"><div class="l">Redis</div><div class="v">${esc(h.redis)}</div></div>
+      <div class="card"><div class="l">Agents</div><div class="v">${agents.length}</div></div>
+      <div class="card"><div class="l">Leads</div><div class="v">${leads.length}</div></div>
+      <div class="card"><div class="l">Pending approvals</div><div class="v">${approvals.length}</div></div>
+      <div class="card"><div class="l">Drafts</div><div class="v">${drafts.length}</div></div>
+      <div class="card"><div class="l">Kill switch</div><div class="v">${h.kill_switch.active?'<span class="dot bad"></span>ACTIVE':'<span class="dot ok"></span>off'}</div></div>`;
+    renderTabs();
+    showTab('leads');
+  }catch(e){ showMsg('Connection failed: '+e.message); document.getElementById('conn').innerHTML='<span class="dot bad"></span><small>failed</small>'; }
+}
+
+const TABS = [['leads','Leads'],['queue','Queue'],['drafts','Drafts'],['approvals','Approvals'],['routine','Daily routine'],['brief','Business brief']];
+function renderTabs(){
+  document.getElementById('tabs').innerHTML = TABS.map(([k,l])=>`<button data-t="${k}" onclick="showTab('${k}')">${l}</button>`).join('');
+}
+async function showTab(k){
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.t===k));
+  const c = document.getElementById('content'); c.innerHTML = 'Loading…'; hideMsg();
+  try{
+    if(k==='leads') await tabLeads(c);
+    if(k==='queue') await tabQueue(c);
+    if(k==='drafts') await tabDrafts(c);
+    if(k==='approvals') await tabApprovals(c);
+    if(k==='routine') tabRoutine(c);
+    if(k==='brief') await tabBrief(c);
+  }catch(e){ showMsg(e.message); }
+}
+
+async function tabLeads(c){
+  const leads = await api('/leads?limit=100');
+  c.innerHTML = `
+    <h3 style="margin-bottom:12px">Add lead</h3>
+    <div class="formgrid">
+      <div><label>Business name *</label><input id="nl_name" style="width:100%"></div>
+      <div><label>Website</label><input id="nl_web" style="width:100%"></div>
+      <div><label>Email</label><input id="nl_email" style="width:100%"></div>
+      <div><label>Phone</label><input id="nl_phone" style="width:100%"></div>
+    </div>
+    <div style="margin-bottom:16px"><label>Notes</label><input id="nl_notes" style="width:100%"></div>
+    <button onclick="addLead()">+ Add lead</button>
+    <h3 style="margin:20px 0 12px">All leads (${leads.length})</h3>
+    <table><tr><th>Business</th><th>Status</th><th>Tier</th><th>Score</th><th>Intent</th><th>Contact</th></tr>
+    ${leads.map(l=>`<tr><td><b>${esc(l.business_name)}</b></td><td><span class="pill ${esc(l.status)}">${esc(l.status)}</span></td>
+      <td>${l.tier?`<span class="pill ${esc(l.tier)}">${esc(l.tier)}</span>`:'—'}</td>
+      <td>${l.lead_score??'—'}</td><td>${l.buying_intent_score} (${esc(l.buying_intent_level)})</td>
+      <td><small>${esc(l.email||'')}<br>${esc(l.phone||'')}</small></td></tr>`).join('')}</table>`;
+}
+async function addLead(){
+  const body = {business_name:document.getElementById('nl_name').value.trim(), website:document.getElementById('nl_web').value.trim()||null, email:document.getElementById('nl_email').value.trim()||null, phone:document.getElementById('nl_phone').value.trim()||null, notes:document.getElementById('nl_notes').value.trim()||null};
+  if(!body.business_name){ showMsg('Business name is required.'); return; }
+  await api('/leads',{method:'POST',body:JSON.stringify(body)});
+  showMsg('Lead added.', true); showTab('leads');
+}
+
+async function tabQueue(c){
+  const q = await api('/queue?limit=10');
+  const items = q.queue || [];
+  c.innerHTML = `<h3 style="margin-bottom:12px">Today's queue (${q.total||items.length} ranked)</h3>
+    <table><tr><th>#</th><th>Business</th><th>Score</th><th>Tier</th><th>Why</th></tr>
+    ${items.map((it,i)=>`<tr><td>${i+1}</td><td><b>${esc(it.business_name||it.lead_id)}</b></td><td>${it.score??'—'}</td>
+      <td>${it.tier?`<span class="pill ${esc(it.tier)}">${esc(it.tier)}</span>`:'—'}</td><td><small>${esc(it.reason||'')}</small></td></tr>`).join('')||'<tr><td colspan=5>No leads queued yet — add leads first.</td></tr>'}</table>`;
+}
+
+async function tabDrafts(c){
+  const drafts = await api('/drafts?limit=30');
+  c.innerHTML = `<h3 style="margin-bottom:12px">Outreach drafts (${drafts.length}) — nothing is sent automatically</h3>` +
+    (drafts.map(d=>`<div class="draft"><h4>${esc(d.lead_name)} <small style="color:var(--dim)">· ${esc(d.channel)} · variant ${esc(d.variant)} · <span class="pill ${esc(d.status)}">${esc(d.status)}</span></small></h4>
+      ${d.subject?`<p><b>${esc(d.subject)}</b></p>`:''}<pre>${esc(d.body)}</pre></div>`).join('') || '<p>No drafts yet. Run the daily routine to generate some.</p>');
+}
+
+async function tabApprovals(c){
+  const list = await api('/approvals?status=PENDING&limit=50');
+  c.innerHTML = `<h3 style="margin-bottom:12px">Pending approvals (${list.length})</h3>` +
+    (list.map(a=>`<div class="draft"><h4>${esc(a.action)} <small style="color:var(--dim)">· ${esc(a.requested_agent||'manual')} · risk ${esc(a.risk_level)}</small></h4>
+      <pre>${esc(JSON.stringify(a.payload, null, 2))}</pre>
+      <div class="row" style="margin-top:10px"><button class="small" onclick="decide('${a.id}','approved')">Approve</button>
+      <button class="small danger" onclick="decide('${a.id}','rejected')">Reject</button></div></div>`).join('')
+    || '<p>No pending approvals. The agent is working in shadow mode — drafts only.</p>');
+}
+async function decide(id, decision){
+  if(decision==='approved' && !confirm('Approve this action?')) return;
+  await api(`/approvals/${id}/decide`, {method:'POST', body:JSON.stringify({decision, decided_by:'owner'})});
+  showMsg('Approval '+decision+'.', true); showTab('approvals');
+}
+
+function tabRoutine(c){
+  c.innerHTML = `<h3 style="margin-bottom:12px">Daily routine</h3>
+    <p style="color:var(--dim);margin-bottom:12px">Runs the full pipeline on the worker: verify → score → queue → draft top leads. Shadow mode: drafts only, nothing sent.</p>
+    <button onclick="runRoutine()">▶ Run routine now</button>
+    <div id="rstat" style="margin-top:14px"></div>`;
+}
+async function runRoutine(){
+  const r = await api('/routine/run', {method:'POST'});
+  const box = document.getElementById('rstat'); box.innerHTML = 'Running… (task '+esc(r.task_id)+')';
+  const poll = setInterval(async ()=>{
+    try{
+      const s = await api('/routine/status/'+r.task_id);
+      box.innerHTML = 'State: <b>'+esc(s.state)+'</b><pre>'+esc(JSON.stringify(s.info,null,2))+'</pre>';
+      if(s.state==='SUCCESS'||s.state==='FAILURE'){ clearInterval(poll); boot(); }
+    }catch(e){ clearInterval(poll); box.innerHTML = 'Status check failed: '+esc(e.message); }
+  }, 4000);
+}
+
+async function tabBrief(c){
+  const b = await api('/reports/brief');
+  c.innerHTML = `<h3 style="margin-bottom:12px">Business brief</h3><pre>${esc(typeof b==='string'?b:JSON.stringify(b,null,2))}</pre>`;
+}
+
+async function toggleKill(){
+  const s = await api('/kill-switch');
+  if(s.active){ if(confirm('Resume the system?')){ await api('/kill-switch/resume',{method:'POST'}); showMsg('System resumed.',true); } }
+  else { const reason = prompt('Reason for stopping everything:','manual stop'); if(reason===null) return;
+    await api('/kill-switch',{method:'POST',body:JSON.stringify({reason})}); showMsg('Kill switch ACTIVE — all agents stopped.',true); }
+  boot();
+}
+
+if(KEY) boot();
+</script>
+</body>
+</html>

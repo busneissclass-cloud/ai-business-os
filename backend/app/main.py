@@ -1,15 +1,17 @@
 """AI Business OS — M0 foundation API."""
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 
 from .auth import ApiKeyMiddleware, assert_production_ready
 from .db import SessionLocal, init_db
 from .middleware import AuditMiddleware, CorrelationIdMiddleware
 from .permissions import seed_permissions
 from .routers import (agents, approvals, audit, brain, freshness, health, intent,
-                      killswitch, leads, nba, permissions, security, settings,
-                      verify)
+                      killswitch, leads, nba, ops, permissions, security,
+                      settings, verify)
 from .agents.registry import seed_all
 
 
@@ -43,8 +45,14 @@ app.include_router(nba.router, prefix="/v1", tags=["nba"])
 app.include_router(brain.router, prefix="/v1", tags=["brain"])
 app.include_router(leads.router, prefix="/v1", tags=["leads"])
 app.include_router(agents.router, prefix="/v1", tags=["agents"])
+app.include_router(ops.router, prefix="/v1", tags=["ops"])
 
 
 @app.get("/")
 def root():
     return {"service": "ai-business-os", "version": "0.1.0-m0", "docs": "/docs"}
+
+
+@app.get("/dashboard", include_in_schema=False)
+def dashboard():
+    return FileResponse(Path(__file__).parent / "static" / "dashboard.html")

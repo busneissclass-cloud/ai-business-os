@@ -7,7 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .config import settings
 
-OPEN_PATHS = {"/", "/v1/health", "/docs", "/openapi.json", "/redoc"}
+OPEN_PATHS = {"/", "/v1/health", "/dashboard", "/docs", "/openapi.json", "/redoc"}
 
 
 class ApiKeyMiddleware(BaseHTTPMiddleware):

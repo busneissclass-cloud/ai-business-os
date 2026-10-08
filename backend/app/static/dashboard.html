@@ -137,11 +137,17 @@ async function tabLeads(c){
     <div style="margin-bottom:16px"><label>Notes</label><input id="nl_notes" style="width:100%"></div>
     <button onclick="addLead()">+ Add lead</button>
     <h3 style="margin:20px 0 12px">All leads (${leads.length})</h3>
-    <table><tr><th>Business</th><th>Status</th><th>Tier</th><th>Score</th><th>Intent</th><th>Contact</th></tr>
+    <table><tr><th>Business</th><th>Status</th><th>Tier</th><th>Score</th><th>Intent</th><th>Contact</th><th></th></tr>
     ${leads.map(l=>`<tr><td><b>${esc(l.business_name)}</b></td><td><span class="pill ${esc(l.status)}">${esc(l.status)}</span></td>
       <td>${l.tier?`<span class="pill ${esc(l.tier)}">${esc(l.tier)}</span>`:'—'}</td>
       <td>${l.lead_score??'—'}</td><td>${l.buying_intent_score} (${esc(l.buying_intent_level)})</td>
-      <td><small>${esc(l.email||'')}<br>${esc(l.phone||'')}</small></td></tr>`).join('')}</table>`;
+      <td><small>${esc(l.email||'')}<br>${esc(l.phone||'')}</small></td>
+      <td><button class="small danger" onclick="delLead('${l.id}','${esc(l.business_name).replace(/'/g,"")}')">✕</button></td></tr>`).join('')}</table>`;
+}
+async function delLead(id, name){
+  if(!confirm('Delete "'+name+'"?')) return;
+  await api('/leads/'+id, {method:'DELETE'});
+  showMsg('Lead deleted.', true); showTab('leads');
 }
 async function addLead(){
   const body = {business_name:document.getElementById('nl_name').value.trim(), website:document.getElementById('nl_web').value.trim()||null, email:document.getElementById('nl_email').value.trim()||null, phone:document.getElementById('nl_phone').value.trim()||null, notes:document.getElementById('nl_notes').value.trim()||null};

@@ -38,3 +38,15 @@ def get_lead(lead_id: str, db: Session = Depends(get_db)):
             "status": lead.status, "tier": lead.tier,
             "buying_intent_score": lead.buying_intent_score,
             "buying_intent_level": lead.buying_intent_level}
+
+
+@router.delete("/leads/{lead_id}")
+def delete_lead(lead_id: str, db: Session = Depends(get_db)):
+    from ..models import OutreachDraft
+    lead = db.get(Lead, lead_id)
+    if not lead:
+        raise HTTPException(404, "unknown lead")
+    db.query(OutreachDraft).filter(OutreachDraft.lead_id == lead_id).delete()
+    db.delete(lead)
+    db.commit()
+    return {"deleted": lead_id}
